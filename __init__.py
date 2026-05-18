@@ -9,7 +9,7 @@ __version__ = "0.1.0"
 __author__ = "EnterpriseAI Team"
 
 from config import get_settings, Settings
-from core import LLMFactory, EnterpriseLLM
+from core import LLMFactory, EnterpriseLLM, EmbeddingsClient, ConversationMemory, MemoryFactory
 from tools import BaseTool, ToolFactory, register_tool
 from knowledge import KnowledgeIngestor, DocumentLoader
 from utils import (
@@ -20,6 +20,8 @@ from utils import (
     LLMError,
     ToolExecutionError,
     KnowledgeBaseError,
+    NetworkError,
+    ValidationError,
 )
 
 __all__ = [
@@ -27,6 +29,9 @@ __all__ = [
     "Settings",
     "LLMFactory",
     "EnterpriseLLM",
+    "EmbeddingsClient",
+    "ConversationMemory",
+    "MemoryFactory",
     "BaseTool",
     "ToolFactory",
     "register_tool",
@@ -39,4 +44,6 @@ __all__ = [
     "LLMError",
     "ToolExecutionError",
     "KnowledgeBaseError",
+    "NetworkError",
+    "ValidationError",
 ]
