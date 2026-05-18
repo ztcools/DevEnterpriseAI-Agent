@@ -1,0 +1,28 @@
+# -*- coding: utf-8 -*-
+"""
+DevEnterpriseAI项目依赖配置文件
+
+请确保已安装Python 3.10或更高版本。
+"""
+
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-openai>=0.2.0
+langchain-community>=0.3.0
+langchain-text-splitters>=0.3.0
+
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+chromadb>=0.5.0
+
+python-dotenv>=1.0.0
+
+tiktoken>=0.7.0
+
+unstructured>=0.15.0
+python-docx>=1.1.0
+pypdf>=4.0.0
+
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
