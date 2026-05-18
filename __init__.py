@@ -9,7 +9,15 @@ __version__ = "0.1.0"
 __author__ = "EnterpriseAI Team"
 
 from config import get_settings, Settings
-from core import LLMFactory, EnterpriseLLM, EmbeddingsClient, ConversationMemory, MemoryFactory
+from core import (
+    LLMFactory,
+    EnterpriseLLM,
+    EmbeddingsClient,
+    ConversationMemory,
+    MemoryFactory,
+    DevEnterpriseAgent,
+    create_agent,
+)
 from tools import (
     BaseTool,
     ToolFactory,
@@ -41,6 +49,8 @@ __all__ = [
     "EmbeddingsClient",
     "ConversationMemory",
     "MemoryFactory",
+    "DevEnterpriseAgent",
+    "create_agent",
     "BaseTool",
     "ToolFactory",
     "register_tool",

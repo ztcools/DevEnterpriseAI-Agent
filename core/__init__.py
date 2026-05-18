@@ -4,5 +4,16 @@
 """
 from .llm import LLMFactory, EnterpriseLLM, EmbeddingsClient
 from .memory import ConversationMemory, MemoryFactory
+from .agent import DevEnterpriseAgent, create_agent, AgentToolCall, AgentState
 
-__all__ = ["LLMFactory", "EnterpriseLLM", "EmbeddingsClient", "ConversationMemory", "MemoryFactory"]
+__all__ = [
+    "LLMFactory", 
+    "EnterpriseLLM", 
+    "EmbeddingsClient", 
+    "ConversationMemory", 
+    "MemoryFactory",
+    "DevEnterpriseAgent",
+    "create_agent",
+    "AgentToolCall",
+    "AgentState"
+]
