@@ -10,7 +10,16 @@ __author__ = "EnterpriseAI Team"
 
 from config import get_settings, Settings
 from core import LLMFactory, EnterpriseLLM, EmbeddingsClient, ConversationMemory, MemoryFactory
-from tools import BaseTool, ToolFactory, register_tool
+from tools import (
+    BaseTool,
+    ToolFactory,
+    register_tool,
+    CodeGeneratorTool,
+    CodeRefactorTool,
+    CompileErrorAnalyzerTool,
+    DocGeneratorTool,
+    ScriptGeneratorTool,
+)
 from knowledge import KnowledgeIngestor, DocumentLoader, RAGRetriever, create_ingestor, create_retriever
 from utils import (
     setup_logger,
@@ -35,6 +44,11 @@ __all__ = [
     "BaseTool",
     "ToolFactory",
     "register_tool",
+    "CodeGeneratorTool",
+    "CodeRefactorTool",
+    "CompileErrorAnalyzerTool",
+    "DocGeneratorTool",
+    "ScriptGeneratorTool",
     "KnowledgeIngestor",
     "DocumentLoader",
     "RAGRetriever",
