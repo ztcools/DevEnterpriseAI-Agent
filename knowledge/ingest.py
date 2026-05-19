@@ -16,16 +16,14 @@ from langchain_community.document_loaders import (
     UnstructuredWordDocumentLoader,
     UnstructuredMarkdownLoader,
 )
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain.chains import RetrievalQA
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 
 from config import get_settings
 from utils import get_logger, KnowledgeBaseError
-from core.llm import EnterpriseLLM
 
 
 class DocumentLoader:
@@ -360,7 +358,7 @@ class RAGRetriever:
 
     def __init__(
         self,
-        llm: Optional[EnterpriseLLM] = None,
+        llm: Optional[Any] = None,
         persist_directory: Optional[str] = None,
         embedding_model: Optional[str] = None,
         api_key: Optional[str] = None,
@@ -431,17 +429,14 @@ class RAGRetriever:
             List[Dict[str, Any]]: 检索结果列表
         """
         k = k or self.top_k
-        vectorstore = self._get_vectorstore()
-
+        
         try:
+            vectorstore = self._get_vectorstore()
             results = vectorstore.similarity_search_with_score(query, k=k)
         except Exception as e:
-            self.logger.error(f"Retrieval failed: {e}")
-            raise KnowledgeBaseError(
-                message=f"Retrieval failed: {str(e)}",
-                operation="retrieve",
-                details={"query": query}
-            )
+            self.logger.warning(f"知识库检索暂时不可用: {str(e)}")
+            self.logger.info("使用空结果继续处理")
+            return []
 
         documents = []
         for doc, score in results:
@@ -570,7 +565,7 @@ def create_ingestor(**kwargs) -> KnowledgeIngestor:
     return KnowledgeIngestor(**kwargs)
 
 
-def create_retriever(llm: Optional[EnterpriseLLM] = None, **kwargs) -> RAGRetriever:
+def create_retriever(llm: Optional[Any] = None, **kwargs) -> RAGRetriever:
     """创建RAG检索器工厂函数
 
     Args:

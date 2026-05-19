@@ -9,6 +9,9 @@ from .exception import (
     LLMError,
     ToolExecutionError,
     KnowledgeBaseError,
+    AuthenticationError,
+    ValidationError,
+    NetworkError,
 )
 
 __all__ = [
@@ -19,4 +22,7 @@ __all__ = [
     "LLMError",
     "ToolExecutionError",
     "KnowledgeBaseError",
+    "AuthenticationError",
+    "ValidationError",
+    "NetworkError",
 ]

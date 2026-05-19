@@ -160,40 +160,24 @@ class DevEnterpriseAgent:
         tool_descriptions = []
         for tool_name, tool_instance in self._tool_registry.items():
             schema = tool_instance.get_schema()
-            tool_descriptions.append(f"""工具名: {tool_name}
-描述: {schema.get('description', '')}
-参数: {json.dumps(schema.get('parameters', {}), ensure_ascii=False, indent=2)}""")
+            tool_descriptions.append(f"- {tool_name}: {schema.get('description', '')}")
         
-        tools_info = "\n\n".join(tool_descriptions)
+        tools_info = "\n".join(tool_descriptions)
         
         return f"""你是一位专业的企业开发AI助手，擅长解决软件开发相关问题。
 
-【可用工具列表】
+【可用工具】
 {tools_info}
 
-【工具调用格式】
-当你决定调用工具时，请输出以下JSON格式：
-<function_calls>
-[
-  {{
-    "tool_name": "<工具名称>",
-    "params": {{
-      "<参数名>": "<参数值>"
-    }}
-  }}
-]
-</function_calls>
+【重要规则】
+1. 普通对话（如"你好"、"介绍一下自己"等）直接用中文回答，绝对不要调用工具
+2. 只有在用户明确要求生成代码、重构代码、分析编译错误、生成文档或创建脚本时才调用工具
+3. 如果用户没有提供具体信息，直接追问用户，不要尝试调用工具
 
-【指令】
-1. 仔细分析用户的问题，判断是否需要调用工具
-2. 如果需要调用工具，请选择最合适的工具并正确填写参数
-3. 如果已经获得足够信息可以直接回答用户，请用自然语言直接回复，不要调用工具
-4. 回答时请使用中文
-
-【注意】
-- 只能调用列表中存在的工具
-- 参数必须是正确的JSON格式
-- 如果不需要调用工具，直接回答用户即可，不需要输出JSON格式
+【回答要求】
+- 回答时请使用中文
+- 保持友好和专业
+- 如果不确定是否需要工具，直接回答用户即可
 """
     
     def _parse_tool_calls(self, response: str) -> Optional[List[AgentToolCall]]:
@@ -221,16 +205,37 @@ class DevEnterpriseAgent:
             json_content = response[start_idx + len(start_tag):end_idx].strip()
             calls_data = json.loads(json_content)
             
+            # 处理可能的不同格式
+            if isinstance(calls_data, dict):
+                # 如果是单个对象，转换为数组
+                calls_data = [calls_data]
+            elif not isinstance(calls_data, list):
+                self._log(f"❌ 工具调用格式错误，期望数组但得到: {type(calls_data)}", "error")
+                return None
+            
             # 解析工具调用
             tool_calls = []
             for call_data in calls_data:
+                if not isinstance(call_data, dict):
+                    self._log(f"⚠️ 跳过无效的工具调用数据: {call_data}", "warning")
+                    continue
+                
+                # 验证必要字段
+                if "tool_name" not in call_data:
+                    self._log(f"⚠️ 工具调用缺少 tool_name: {call_data}", "warning")
+                    continue
+                
                 tool_call = AgentToolCall.from_dict(call_data)
                 tool_calls.append(tool_call)
             
-            return tool_calls
+            return tool_calls if tool_calls else None
         
         except json.JSONDecodeError as e:
             self._log(f"❌ JSON解析失败: {e}", "error")
+            self._log(f"   原始内容: {response[:200]}...", "debug")
+            return None
+        except Exception as e:
+            self._log(f"❌ 工具调用解析失败: {e}", "error")
             return None
     
     def _execute_tool(self, tool_call: AgentToolCall) -> ToolOutputSchema:
@@ -279,7 +284,7 @@ class DevEnterpriseAgent:
             str: 完整提示词
         """
         # 获取对话历史
-        history = self._memory.get_history()
+        history = self._memory.get_history_as_dict()
         history_str = "\n".join([f"{msg['role']}: {msg['content']}" for msg in history])
         
         prompt = f"""【对话历史】
@@ -337,7 +342,7 @@ class DevEnterpriseAgent:
         knowledge_context = self._retrieve_knowledge(user_input)
         
         # 步骤2: 添加用户消息到记忆
-        self._memory.add_message("user", user_input)
+        self._memory.add_user_message(user_input)
         
         # 步骤3: 多轮循环执行
         for iteration in range(max_iterations):
@@ -345,10 +350,11 @@ class DevEnterpriseAgent:
             
             # 构建提示词
             prompt = self._build_prompt(user_input, knowledge_context)
+            full_prompt = self._build_system_prompt() + prompt
             
             # 调用LLM
             self._log("🧠 正在思考...")
-            llm_response = self._llm.invoke(self._build_system_prompt() + prompt)
+            llm_response = self._llm.invoke(full_prompt)
             response_content = llm_response.content
             
             self._log(f"💭 LLM返回: {response_content[:200]}...")
@@ -361,7 +367,7 @@ class DevEnterpriseAgent:
                 self._log("✅ 直接回答用户")
                 
                 # 添加助手消息到记忆
-                self._memory.add_message("assistant", response_content)
+                self._memory.add_ai_message(response_content)
                 
                 return response_content
             
@@ -381,7 +387,7 @@ class DevEnterpriseAgent:
                 
                 # 将工具结果添加到对话历史
                 tool_result_str = f"工具调用[{tool_call.tool_name}]: {'成功' if result.success else '失败'}\n结果: {str(result.result) if result.success else result.error}"
-                self._memory.add_message("assistant", tool_result_str)
+                self._memory.add_ai_message(tool_result_str)
         
         self._log(f"⚠️ 达到最大迭代次数 {max_iterations}，任务未完成")
         return "任务执行超时，请简化问题或重新描述。"

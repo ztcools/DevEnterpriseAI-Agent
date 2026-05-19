@@ -3,7 +3,6 @@
 会话记忆模块
 
 提供短期会话记忆管理，支持对话历史自动压缩，防止上下文溢出。
-基于LangChain的ConversationSummaryMemory实现。
 """
 
 import json
@@ -12,12 +11,9 @@ from typing import Any, Dict, List, Optional, Union
 from langchain_core.messages import (
     BaseMessage, AIMessage, HumanMessage, SystemMessage, get_buffer_string
 )
-from langchain.memory import ConversationSummaryMemory, ConversationBufferMemory
-from langchain.prompts import PromptTemplate
 
 from config import get_settings
 from utils import get_logger, ConfigurationError
-from core.llm import EnterpriseLLM
 
 
 class BaseMemory(ABC):
@@ -58,12 +54,10 @@ class ConversationMemory(BaseMemory):
     """会话记忆管理器
 
     支持自动压缩对话历史，防止上下文溢出。
-    采用分层记忆策略：短期详细记忆 + 长期摘要记忆。
     """
 
     def __init__(
         self,
-        llm: Optional[EnterpriseLLM] = None,
         max_history: Optional[int] = None,
         memory_key: str = "history",
         return_messages: bool = True,
@@ -72,7 +66,6 @@ class ConversationMemory(BaseMemory):
         """初始化会话记忆
 
         Args:
-            llm: LLM实例，用于生成对话摘要
             max_history: 最大历史消息数
             memory_key: 记忆变量名称
             return_messages: 是否返回消息对象
@@ -86,22 +79,6 @@ class ConversationMemory(BaseMemory):
         self.verbose = verbose
 
         self.logger = get_logger(self.__class__.__name__)
-
-        if llm is None:
-            from core.llm import LLMFactory
-            llm = LLMFactory.create_llm()
-
-        self._llm = llm
-        self._buffer_memory = ConversationBufferMemory(
-            memory_key=memory_key,
-            return_messages=return_messages,
-            max_len=self.max_history
-        )
-        self._summary_memory = ConversationSummaryMemory(
-            llm=self._llm._client,
-            memory_key=memory_key,
-            return_messages=return_messages
-        )
 
         self._total_tokens = 0
         self._summary_trigger_tokens = 2048
@@ -120,9 +97,6 @@ class ConversationMemory(BaseMemory):
 
         if len(self._history) > self.max_history:
             self._history = self._history[-self.max_history:]
-
-        self._buffer_memory.chat_memory.add_message(message)
-        self._summary_memory.chat_memory.add_message(message)
 
         self._update_total_tokens(str(message.content))
         self._check_summary_needed()
@@ -181,8 +155,6 @@ class ConversationMemory(BaseMemory):
     def clear(self) -> None:
         """清空记忆"""
         self._history = []
-        self._buffer_memory.clear()
-        self._summary_memory.clear()
         self._total_tokens = 0
         self._last_summary = ""
         self.logger.info("ConversationMemory cleared")
@@ -221,26 +193,24 @@ class ConversationMemory(BaseMemory):
             self._generate_summary()
 
     def _generate_summary(self) -> None:
-        """生成对话摘要"""
+        """生成对话摘要（简化版）"""
         try:
-            if self._llm is None:
-                self.logger.warning("No LLM available for summary generation")
+            if len(self._history) == 0:
                 return
 
-            summary = self._summary_memory.load_memory_variables({})
+            summary_lines = []
+            for msg in self._history[-5:]:
+                role = self._get_role(msg)
+                summary_lines.append(f"{role}: {msg.content[:100]}...")
+            
+            self._last_summary = "\n".join(summary_lines)
+            self._history = [SystemMessage(content=f"对话摘要: {self._last_summary}")]
+            self._total_tokens = 0
 
-            if summary and self.memory_key in summary:
-                self._last_summary = str(summary[self.memory_key])
+            self.logger.info(f"Generated summary, history compressed. Summary length: {len(self._last_summary)}")
 
-                if self._last_summary:
-                    self._history = [SystemMessage(content=f"对话摘要: {self._last_summary}")]
-                    self._total_tokens = 0
-                    self._buffer_memory.clear()
-
-                    self.logger.info(f"Generated summary, history compressed. Summary length: {len(self._last_summary)}")
-
-                    if self.verbose:
-                        self.logger.debug(f"Summary content: {self._last_summary[:200]}...")
+            if self.verbose:
+                self.logger.debug(f"Summary content: {self._last_summary[:200]}...")
         except Exception as e:
             self.logger.error(f"Failed to generate summary: {str(e)}")
 
@@ -311,7 +281,6 @@ class MemoryFactory:
 
     @staticmethod
     def create_memory(
-        llm: Optional[EnterpriseLLM] = None,
         memory_type: Optional[str] = None,
         max_history: Optional[int] = None,
         **kwargs: Any
@@ -319,7 +288,6 @@ class MemoryFactory:
         """创建会话记忆管理器
 
         Args:
-            llm: LLM实例
             memory_type: 记忆类型（buffer/summary）
             max_history: 最大历史消息数
             **kwargs: 其他参数
@@ -338,7 +306,6 @@ class MemoryFactory:
             )
 
         return ConversationMemory(
-            llm=llm,
             max_history=max_history or settings.memory.max_history,
             **kwargs
         )
@@ -358,21 +325,18 @@ class MemoryFactory:
             ConversationMemory: 会话记忆实例
         """
         return ConversationMemory(
-            llm=None,
             max_history=max_history,
             **kwargs
         )
 
     @staticmethod
     def create_summary_memory(
-        llm: EnterpriseLLM,
         max_history: Optional[int] = None,
         **kwargs: Any
     ) -> ConversationMemory:
         """创建带摘要的会话记忆
 
         Args:
-            llm: LLM实例
             max_history: 最大历史消息数
             **kwargs: 其他参数
 
@@ -380,7 +344,6 @@ class MemoryFactory:
             ConversationMemory: 会话记忆实例
         """
         return ConversationMemory(
-            llm=llm,
             max_history=max_history,
             **kwargs
         )

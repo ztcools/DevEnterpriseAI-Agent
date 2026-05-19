@@ -6,6 +6,8 @@
 采用层次化的异常设计，便于错误捕获和处理。
 """
 
+from typing import Optional, Any
+
 
 class EnterpriseAIException(Exception):
     """企业AI基础异常类
@@ -261,4 +263,4 @@ class NetworkError(EnterpriseAIException):
         return base_str
 
 
-from typing import Optional, Any
+from typing import Optional, Any, Any

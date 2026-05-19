@@ -241,7 +241,14 @@ class EnterpriseLLM(BaseLLM):
             if self._client is None:
                 self._init_client()
 
-            response = self._client.generate(messages, **kwargs)
+            # 直接使用字符串调用
+            full_text = "\n".join([f"{msg.type}: {msg.content}" for msg in messages])
+            response_msg = self._client.invoke(full_text, **kwargs)
+            
+            # 构建ChatResult
+            generation = ChatGeneration(message=response_msg)
+            response = ChatResult(generations=[generation])
+            
             duration = time.time() - start_time
 
             self.monitor.log_response(self.model_name, response, duration, success=True)
@@ -373,13 +380,13 @@ class EnterpriseLLM(BaseLLM):
 
     def invoke(
         self,
-        input: Union[str, List[BaseMessage]],
+        input: Union[str, List[BaseMessage], BaseMessage],
         **kwargs: Any
     ) -> BaseMessage:
-        """同步调用LLM
+        """调用LLM生成内容
 
         Args:
-            input: 输入字符串或消息列表
+            input: 输入字符串、单个消息或消息列表
             **kwargs: 其他参数
 
         Returns:
@@ -387,6 +394,8 @@ class EnterpriseLLM(BaseLLM):
         """
         if isinstance(input, str):
             messages = [HumanMessage(content=input)]
+        elif isinstance(input, BaseMessage):
+            messages = [input]
         else:
             messages = input
 

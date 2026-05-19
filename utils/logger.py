@@ -18,7 +18,7 @@ _loggers = {}
 
 
 def setup_logger(
-    name: str,
+    name: str = "DevEnterpriseAI",
     level: str = "INFO",
     log_format: Optional[str] = None,
     log_file: Optional[str] = None,
