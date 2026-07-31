@@ -23,7 +23,7 @@ from langchain_community.vectorstores import Chroma
 from langchain_core.prompts import PromptTemplate
 
 from config import get_settings
-from utils import get_logger, KnowledgeBaseError
+from utils import get_logger, KnowledgeBaseError, LLMError
 
 
 class DocumentLoader:
@@ -597,6 +597,3 @@ def build_knowledge_base(
     count = ingestor.ingest_directory(documents_dir, file_types=[".txt", ".md"])
     ingestor.persist()
     return count
-
-
-from utils import LLMError
