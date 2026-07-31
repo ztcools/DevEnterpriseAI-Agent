@@ -8,7 +8,7 @@
 
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
@@ -157,8 +157,8 @@ class Settings(BaseSettings):
             console_output=self.log_console_output,
         )
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def model_post_init(self, __context: Any = None) -> None:
+        """Pydantic v2 初始化后钩子，确保目录存在"""
         self._ensure_directories()
 
     def _ensure_directories(self) -> None:

@@ -241,10 +241,9 @@ class EnterpriseLLM(BaseLLM):
             if self._client is None:
                 self._init_client()
 
-            # 直接使用字符串调用
-            full_text = "\n".join([f"{msg.type}: {msg.content}" for msg in messages])
-            response_msg = self._client.invoke(full_text, **kwargs)
-            
+            # 保留结构化消息格式调用 LLM
+            response_msg = self._client.invoke(messages, **kwargs)
+
             # 构建ChatResult
             generation = ChatGeneration(message=response_msg)
             response = ChatResult(generations=[generation])

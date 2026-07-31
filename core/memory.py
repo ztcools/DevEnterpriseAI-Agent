@@ -204,7 +204,9 @@ class ConversationMemory(BaseMemory):
                 summary_lines.append(f"{role}: {msg.content[:100]}...")
             
             self._last_summary = "\n".join(summary_lines)
-            self._history = [SystemMessage(content=f"对话摘要: {self._last_summary}")]
+            # 保留最近 5 条消息 + 摘要，避免完全丢失上下文
+            recent = self._history[-5:] if len(self._history) > 5 else []
+            self._history = [SystemMessage(content=f"对话摘要: {self._last_summary}")] + recent
             self._total_tokens = 0
 
             self.logger.info(f"Generated summary, history compressed. Summary length: {len(self._last_summary)}")
